@@ -4,6 +4,11 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from 'src/modules/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
+import { LocalStrategy } from 'src/auth/passport/local.strategy';
+import { JwtStrategy } from 'src/auth/passport/jwt.strategy';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from 'src/auth/passport/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -17,9 +22,18 @@ import { ConfigService } from '@nestjs/config';
         }
       }),
       inject: [ConfigService]
-    })
+    }),
+    PassportModule
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard
+    }
+  ],
 })
 export class AuthModule { }

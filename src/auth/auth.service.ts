@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
 import { comparePasswordHelper } from 'src/helpers/util';
 import { UsersService } from 'src/modules/users/users.service';
 
@@ -10,18 +11,23 @@ export class AuthService {
     private jwtService: JwtService
   ) { }
 
-  async signIn(username: string, pass: string): Promise<any> {
+  async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
     const isValidPassword = await comparePasswordHelper(pass, user.password)
-    if (!isValidPassword) {
-      throw new UnauthorizedException("Username/Password khong hop le");
-    }
 
-    const payload = { sub: user._id, username: user.email };
+    if (!user || !isValidPassword) return null
+
+    return user
+  }
+
+  async login(user: any) {
+    const payload = { username: user.email, sub: user._id }
 
     return {
-      access_token: await this.jwtService.signAsync(payload)
+      access_token: this.jwtService.sign(payload)
     }
-
+  }
+  handleRegister = async (registerDto: CreateAuthDto) => {
+    return await this.usersService.handleRegister(registerDto)
   }
 }

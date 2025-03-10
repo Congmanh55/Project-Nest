@@ -6,6 +6,9 @@ import { User } from 'src/modules/users/schemas/user.schema';
 import mongoose, { Model } from 'mongoose';
 import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
+import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
+import { v4 as uuidv4 } from 'uuid';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class UsersService {
@@ -86,5 +89,32 @@ export class UsersService {
       throw new BadRequestException("Id khong dung dinh dang")
     }
     return `This action removes a #${_id} user`;
+  }
+
+  async handleRegister(registerDto: CreateAuthDto) {
+    const { name, email, password } = registerDto;
+
+    //chekc email
+    const isExitst = await this.isEmailExist(email)
+    if (isExitst) {
+      throw new BadRequestException(`Email da ton tai: ${email}. Vui long su dung email khac`)
+    }
+
+    //hash password
+    const hashPassword = await hashPasswordHelper(password)
+    const user = await this.userModel.create({
+      name, email, password: hashPassword,
+      isActive: false,
+      codeId: uuidv4(),
+      codeExpired: dayjs().add(1, 'minutes')
+    })
+
+    //tra ra phan hoi 
+    return {
+      _id: user._id
+    }
+
+    //send email
+
   }
 }
