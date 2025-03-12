@@ -6,7 +6,7 @@ import { User } from 'src/modules/users/schemas/user.schema';
 import mongoose, { Model } from 'mongoose';
 import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
-import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
+import { CodeAuthDto, CreateAuthDto } from 'src/auth/dto/create-auth.dto';
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
 import { MailerService } from '@nestjs-modules/mailer';
@@ -129,6 +129,29 @@ export class UsersService {
     //tra ra phan hoi 
     return {
       _id: user._id
+    }
+
+  }
+
+  async handleActive(data: CodeAuthDto) {
+    const user = await this.userModel.findOne({
+      _id: data._id,
+      codeId: data.code
+    })
+    if (!user) {
+      throw new BadRequestException("Ma code khong ton tai hoac da het han")
+    }
+
+    //check expire code
+    const isBeforeCheck = dayjs().isBefore(user.codeExpired)
+    if (isBeforeCheck) {
+      //valid => update user
+      await this.userModel.updateOne({ _id: data._id }, {
+        isActive: true
+      })
+      return { isBeforeCheck }
+    } else {
+      throw new BadRequestException("Ma code khong ton tai hoac da het han")
     }
 
   }
