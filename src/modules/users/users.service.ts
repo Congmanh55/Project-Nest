@@ -155,4 +155,39 @@ export class UsersService {
     }
 
   }
+
+  async retryActive(email: string) {
+    //check email
+    const user = await this.userModel.findOne({ email });
+
+    if (!user) {
+      throw new BadRequestException("Tai khoan khong ton tai")
+    }
+    if (user.isActive === 'true') {
+      throw new BadRequestException("Tai khoan da duoc kich hoat")
+    }
+
+    //sendEmai
+    const codeId = uuidv4()
+
+    //update user
+    await user.updateOne({
+      codeId: codeId,
+      codeExpired: dayjs().add(5, 'minutes')
+    })
+    //send Email
+    this.mailerService
+      .sendMail({
+        to: user.email, // list of receivers
+        subject: 'Active your account at See_M ✔', // Subject line
+        text: 'welcome', // plaintext body
+        template: 'register.hbs',
+        context: {
+          name: user?.name ?? user.email,
+          activationCode: codeId
+        }
+      })
+
+    return { _id: user._id }
+  }
 }

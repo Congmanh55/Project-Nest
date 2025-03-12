@@ -14,7 +14,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
         if (!user) {
             throw new UnauthorizedException("Username/Password khong hop le");
         }
-        if (user.isActive === false) {
+        if (user.isActive === 'false') {
             throw new BadRequestException("Tai khoan chua duoc kich hoat")
         }
         return user;
