@@ -6,7 +6,7 @@ import { User } from 'src/modules/users/schemas/user.schema';
 import mongoose, { Model } from 'mongoose';
 import { hashPasswordHelper } from 'src/helpers/util';
 import aqp from 'api-query-params';
-import { CodeAuthDto, CreateAuthDto } from 'src/auth/dto/create-auth.dto';
+import { ChangePasswordAuthDto, CodeAuthDto, CreateAuthDto } from 'src/auth/dto/create-auth.dto';
 import { v4 as uuidv4 } from 'uuid';
 import dayjs from 'dayjs';
 import { MailerService } from '@nestjs-modules/mailer';
@@ -189,5 +189,62 @@ export class UsersService {
       })
 
     return { _id: user._id }
+  }
+
+  async retryPassword(email: string) {
+    //check email
+    const user = await this.userModel.findOne({ email });
+
+    if (!user) {
+      throw new BadRequestException("Tai khoan khong ton tai")
+    }
+
+    //sendEmai
+    const codeId = uuidv4()
+
+    //update user
+    await user.updateOne({
+      codeId: codeId,
+      codeExpired: dayjs().add(5, 'minutes')
+    })
+    //send Email
+    this.mailerService
+      .sendMail({
+        to: user.email, // list of receivers
+        subject: 'Change your password at See_M ✔', // Subject line
+        text: 'welcome', // plaintext body
+        template: 'register.hbs',
+        context: {
+          name: user?.name ?? user.email,
+          activationCode: codeId
+        }
+      })
+
+    return { _id: user._id, email: user.email }
+  }
+
+  async changePassword(data: ChangePasswordAuthDto) {
+    if (data.confirmPassword !== data.password) {
+      throw new BadRequestException("Mat khau/xac nhan mat khau khong chinh xac")
+    }
+
+    //check email
+    const user = await this.userModel.findOne({ email: data.email });
+
+    if (!user) {
+      throw new BadRequestException("Tai khoan khong ton tai")
+    }
+
+    //check expire code
+    const isBeforeCheck = dayjs().isBefore(user.codeExpired)
+    if (isBeforeCheck) {
+      //valid => update password
+      const newPassword = await hashPasswordHelper(data.password)
+      await user.updateOne({ password: newPassword })
+
+      return { isBeforeCheck }
+    } else {
+      throw new BadRequestException("Ma code khong ton tai hoac da het han")
+    }
   }
 }
